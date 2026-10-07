@@ -1,7 +1,7 @@
 const SESSION_API='https://qshfwqibsdaeslwrgiby.supabase.co/functions/v1/game-session';
 let roomCode=localStorage.getItem('vitaumRoomCode')||'';
 let hostToken=localStorage.getItem('vitaumHostToken')||'';
-let roomTimer=null,pushTimer=null,suppressRemote=false;
+let roomTimer=null,pushTimer=null,suppressRemote=false,pushInFlight=false;
 
 function roomState(){return{visited:[...visited],pockets:[...completedPockets],pocketResults:{...pocketResults},bossResults:{...bossResults}}}
 async function roomApi(payload){
@@ -17,7 +17,7 @@ function applyRoomState(state){
   completedPockets.clear();(state.pockets||[]).forEach(v=>completedPockets.add(Number(v)));
   replaceObject(pocketResults,state.pocketResults);
   replaceObject(bossResults,state.bossResults);
-  const oldPersist=basePersist;oldPersist();
+  basePersist();
   if(current!==null){const p=data.find(x=>x.num===current);if(p)render(p)}else updateStatus();
   suppressRemote=false;
 }
@@ -28,17 +28,24 @@ function updateRoomButton(){
   sessionBtn.title=roomCode?'Conectado à mesa compartilhada':'Criar ou entrar em uma mesa compartilhada';
 }
 async function pullRoom(){
-  if(!roomCode||pushTimer)return;
+  if(!roomCode||pushTimer||pushInFlight||suppressRemote)return;
   try{const res=await roomApi({action:'get',code:roomCode});applyRoomState(res.state)}catch(e){console.warn(e)}
 }
 function startRoomPolling(){clearInterval(roomTimer);if(roomCode){roomTimer=setInterval(pullRoom,2000);pullRoom()}updateRoomButton()}
 async function pushRoom(){
-  if(!roomCode||suppressRemote)return;
-  try{const res=await roomApi({action:'merge',code:roomCode,state:roomState()});applyRoomState(res.state)}catch(e){console.warn(e)}
+  if(!roomCode||suppressRemote||pushInFlight)return;
+  pushInFlight=true;
+  const snapshot=roomState();
+  try{
+    const res=await roomApi({action:'merge',code:roomCode,state:snapshot});
+    applyRoomState(res.state);
+  }catch(e){console.warn(e)}
+  finally{pushInFlight=false}
 }
 function queueRoomPush(){
   if(!roomCode||suppressRemote)return;
-  clearTimeout(pushTimer);pushTimer=setTimeout(async()=>{pushTimer=null;await pushRoom()},250);
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(async()=>{pushTimer=null;await pushRoom()},180);
 }
 
 const basePersist=persist;
@@ -51,7 +58,7 @@ topActions.insertBefore(sessionBtn,document.getElementById('resetBtn'));
 const overlay=document.createElement('div');overlay.className='room-overlay';overlay.hidden=true;
 overlay.innerHTML=`<div class="room-modal" role="dialog" aria-modal="true" aria-labelledby="roomTitle"><button class="room-close" aria-label="Fechar">×</button><div class="room-kicker">Mesa compartilhada</div><h2 id="roomTitle">Jogar em vários aparelhos</h2><p class="room-help">O mestre cria uma mesa e envia o código. Todos os celulares e tablets que entrarem com esse código compartilham páginas visitadas, resultados dos bolsos e o confronto final.</p><div class="room-current" hidden><span>Conectado à mesa</span><strong class="room-code"></strong><button class="room-copy">Copiar código</button></div><div class="room-actions"><button class="room-create primary">Criar nova mesa</button><div class="room-join-line"><input class="room-input" maxlength="7" autocomplete="off" placeholder="CÓDIGO DA MESA" aria-label="Código da mesa"><button class="room-join">Entrar</button></div><button class="room-leave" hidden>Sair desta mesa</button></div><p class="room-message" aria-live="polite"></p></div>`;
 document.body.appendChild(overlay);
-const modal=overlay.querySelector('.room-modal'),currentBox=overlay.querySelector('.room-current'),codeEl=overlay.querySelector('.room-code'),msgEl=overlay.querySelector('.room-message'),leaveBtn=overlay.querySelector('.room-leave');
+const currentBox=overlay.querySelector('.room-current'),codeEl=overlay.querySelector('.room-code'),msgEl=overlay.querySelector('.room-message'),leaveBtn=overlay.querySelector('.room-leave');
 function setRoomMessage(text,err=false){msgEl.textContent=text||'';msgEl.classList.toggle('error',err)}
 function refreshRoomModal(){
   currentBox.hidden=!roomCode;leaveBtn.hidden=!roomCode;codeEl.textContent=roomCode;
@@ -92,7 +99,7 @@ resetButton.onclick=async()=>{
   if(!hostToken){alert('Você está em uma mesa compartilhada. Somente o aparelho que criou a mesa pode reiniciar a partida para todos.');return}
   if(!confirm(`Reiniciar a mesa ${roomCode} para todos os aparelhos?`))return;
   try{
-    clearTimeout(pushTimer);pushTimer=null;
+    clearTimeout(pushTimer);pushTimer=null;pushInFlight=false;
     const res=await roomApi({action:'reset',code:roomCode,hostToken});applyRoomState(res.state);showCover();
     alert('Mesa reiniciada para todos.');
   }catch(e){alert(e.message)}
