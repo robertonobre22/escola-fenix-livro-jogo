@@ -56,16 +56,17 @@ const sessionBtn=document.createElement('button');sessionBtn.id='sessionBtn';ses
 topActions.insertBefore(sessionBtn,document.getElementById('resetBtn'));
 
 const overlay=document.createElement('div');overlay.className='room-overlay';overlay.hidden=true;
-overlay.innerHTML=`<div class="room-modal" role="dialog" aria-modal="true" aria-labelledby="roomTitle"><button class="room-close" aria-label="Fechar">×</button><div class="room-kicker">Mesa compartilhada</div><h2 id="roomTitle">Jogar em vários aparelhos</h2><p class="room-help">O mestre cria uma mesa e envia o código. Todos os celulares e tablets que entrarem com esse código compartilham páginas visitadas, resultados dos bolsos e o confronto final.</p><div class="room-current" hidden><span>Conectado à mesa</span><strong class="room-code"></strong><button class="room-copy">Copiar código</button></div><div class="room-actions"><button class="room-create primary">Criar nova mesa</button><div class="room-join-line"><input class="room-input" maxlength="7" autocomplete="off" placeholder="CÓDIGO DA MESA" aria-label="Código da mesa"><button class="room-join">Entrar</button></div><button class="room-leave" hidden>Sair desta mesa</button></div><p class="room-message" aria-live="polite"></p></div>`;
+overlay.innerHTML=`<div class="room-modal" role="dialog" aria-modal="true" aria-labelledby="roomTitle"><button class="room-close" aria-label="Fechar">×</button><div class="room-kicker">Mesa compartilhada</div><h2 id="roomTitle">Jogar em vários aparelhos</h2><p class="room-help">O mestre cria uma mesa e envia o código. Todos os celulares e tablets que entrarem com esse código compartilham páginas visitadas, resultados dos bolsos e o confronto final.</p><div class="room-current" hidden><span>Conectado à mesa</span><strong class="room-code"></strong><button class="room-copy">Copiar código</button></div><div class="room-actions"><button class="room-create primary">Criar nova mesa</button><div class="room-join-line"><input class="room-input" maxlength="7" autocomplete="off" placeholder="CÓDIGO DA MESA" aria-label="Código da mesa"><button class="room-join">Entrar</button></div><button class="room-leave" hidden>Sair desta mesa</button></div><p class="room-message" aria-live="polite"></p><div class="diagnostic-box"><div><strong>Modo diagnóstico</strong><span>Executa um teste isolado no servidor. Sua mesa atual não é alterada.</span></div><button class="diagnostic-run">Executar teste</button><div class="diagnostic-result" hidden></div></div></div>`;
 document.body.appendChild(overlay);
 const currentBox=overlay.querySelector('.room-current'),codeEl=overlay.querySelector('.room-code'),msgEl=overlay.querySelector('.room-message'),leaveBtn=overlay.querySelector('.room-leave');
+const diagnosticBtn=overlay.querySelector('.diagnostic-run'),diagnosticResult=overlay.querySelector('.diagnostic-result');
 function setRoomMessage(text,err=false){msgEl.textContent=text||'';msgEl.classList.toggle('error',err)}
 function refreshRoomModal(){
   currentBox.hidden=!roomCode;leaveBtn.hidden=!roomCode;codeEl.textContent=roomCode;
   overlay.querySelector('.room-create').textContent=roomCode?'Criar outra mesa':'Criar nova mesa';
   updateRoomButton();
 }
-function openRoomModal(){refreshRoomModal();setRoomMessage('');overlay.hidden=false;overlay.querySelector('.room-input').value=''}
+function openRoomModal(){refreshRoomModal();setRoomMessage('');diagnosticResult.hidden=true;diagnosticResult.innerHTML='';overlay.hidden=false;overlay.querySelector('.room-input').value=''}
 function closeRoomModal(){overlay.hidden=true}
 sessionBtn.onclick=openRoomModal;overlay.querySelector('.room-close').onclick=closeRoomModal;overlay.addEventListener('click',e=>{if(e.target===overlay)closeRoomModal()});
 
@@ -90,6 +91,27 @@ overlay.querySelector('.room-copy').onclick=async()=>{try{await navigator.clipbo
 leaveBtn.onclick=()=>{
   if(!confirm('Sair desta mesa? O progresso compartilhado continuará existindo para os outros aparelhos.'))return;
   roomCode='';hostToken='';localStorage.removeItem('vitaumRoomCode');localStorage.removeItem('vitaumHostToken');clearInterval(roomTimer);refreshRoomModal();setRoomMessage('Você saiu da mesa.');
+};
+
+diagnosticBtn.onclick=async()=>{
+  diagnosticBtn.disabled=true;diagnosticBtn.textContent='Testando...';diagnosticResult.hidden=false;diagnosticResult.className='diagnostic-result';diagnosticResult.textContent='Criando uma mesa temporária e simulando três aparelhos...';
+  try{
+    const created=await roomApi({action:'create'});const code=created.code;
+    await roomApi({action:'merge',code,state:{pockets:[6],pocketResults:{6:'sh'}}});
+    await roomApi({action:'merge',code,state:{pockets:[18],pocketResults:{18:'fm'}}});
+    await roomApi({action:'merge',code,state:{pockets:[19],pocketResults:{19:'sm'}}});
+    const final=await roomApi({action:'get',code});
+    const results=final.state?.pocketResults||{};
+    const pockets=final.state?.pockets||[];
+    let difficulty=14;Object.values(results).forEach(r=>{if(r==='sh')difficulty--;if(r==='fm')difficulty++});
+    const registered=[6,18,19].filter(n=>results[String(n)]).length;
+    const unlocked=registered===3;
+    const ok=unlocked&&difficulty===14&&pockets.map(Number).includes(6)&&pockets.map(Number).includes(18)&&pockets.map(Number).includes(19);
+    diagnosticResult.classList.toggle('ok',ok);diagnosticResult.classList.toggle('fail',!ok);
+    diagnosticResult.innerHTML=`<strong>${ok?'✓ Teste aprovado':'⚠ Teste encontrou uma inconsistência'}</strong><span>Folha 06: Sucesso com Esperança → −1</span><span>Folha 18: Fracasso com Medo → +1</span><span>Folha 19: Sucesso com Medo → 0</span><span><b>Bolsos registrados:</b> ${registered}/3</span><span><b>Dificuldade calculada:</b> ${difficulty}</span><span><b>Folha 09:</b> ${unlocked?'LIBERADA':'BLOQUEADA'}</span><small>Mesa temporária do teste: ${code}</small>`;
+  }catch(e){
+    diagnosticResult.classList.add('fail');diagnosticResult.innerHTML=`<strong>⚠ Falha no teste</strong><span>${e.message}</span>`;
+  }finally{diagnosticBtn.disabled=false;diagnosticBtn.textContent='Executar teste'}
 };
 
 const resetButton=document.getElementById('resetBtn');
