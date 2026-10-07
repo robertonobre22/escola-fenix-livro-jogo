@@ -122,18 +122,27 @@ function render(p){
   if(p.num===9)body.appendChild(makeBossPanel());
   let navStack=null;let currentResultSection=null;const selectedPocketResult=pocketResults[p.num];
   p.body.forEach(item=>{
-    if(item.type==='result_head')currentResultSection=resultFromHeading[item.text]||null;
-    if([6,18,19].includes(p.num)&&currentResultSection&&selectedPocketResult!==currentResultSection)return;
+    /* Navegação precisa ser processada antes do filtro de resultado. Assim,
+       Folhas 06, 18 e 19 continuam mostrando o botão para a Folha 09 depois
+       que um dos quatro resultados é escolhido. */
     if(item.type==='nav'){
       currentResultSection=null;
       if(!navStack){navStack=document.createElement('div');navStack.className='nav-stack';body.appendChild(navStack)}
       const b=document.createElement('button');b.className='navbtn';b.textContent=item.label;
-      if(item.target===9){b.classList.add('wait');b.onclick=()=>{if(master||Object.keys(pocketResults).filter(k=>[6,18,19].includes(Number(k))).length>=3)goto(9);else alert('A Folha 09 só é liberada quando os três bolsos tiverem um resultado registrado.')}}
+      if(item.target===9){
+        b.classList.add('wait');
+        const registered=Object.keys(pocketResults).filter(k=>[6,18,19].includes(Number(k))).length;
+        if(registered<3&&!master)b.textContent=`Resultado registrado · aguardando os outros grupos (${registered}/3)`;
+        else b.textContent='Os três bolsos foram resolvidos → Folha 09';
+        b.onclick=()=>{if(master||Object.keys(pocketResults).filter(k=>[6,18,19].includes(Number(k))).length>=3)goto(9);else alert('Este resultado foi registrado. A Folha 09 será liberada quando os três bolsos tiverem um resultado registrado.')};
+      }
       else if(p.num===9&&item.target===14){b.onclick=()=>{const c=bossCounts();if(master||c.success>=4)goto(14);else alert('A vitória é liberada quando o grupo acumular 4 sucessos.')}}
       else if(p.num===9&&item.target===5){b.onclick=()=>{const c=bossCounts();if(master||c.fail>=4)goto(5);else alert('A derrota é liberada quando o grupo acumular 4 fracassos.')}}
       else b.onclick=()=>goto(item.target);
       navStack.appendChild(b);return;
     }
+    if(item.type==='result_head')currentResultSection=resultFromHeading[item.text]||null;
+    if([6,18,19].includes(p.num)&&currentResultSection&&selectedPocketResult!==currentResultSection)return;
     navStack=null;
     const el=document.createElement(item.type==='result_head'?'h3':'p');
     if(item.type==='result_head')el.className='result-head';
