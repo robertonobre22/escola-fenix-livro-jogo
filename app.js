@@ -8,16 +8,6 @@ const completedPockets=new Set(JSON.parse(localStorage.getItem('vitaumPockets')|
 const pocketResults=JSON.parse(localStorage.getItem('vitaumPocketResults')||'{}');
 const bossResults=JSON.parse(localStorage.getItem('vitaumBossResults')||'{}');
 
-/* Versão única dos recursos visuais. Sempre que alguma arte for substituída
-   mantendo o mesmo nome de arquivo, basta alterar este valor para forçar
-   todos os navegadores a baixar a imagem nova. */
-const ASSET_VERSION='20261007-2';
-function assetUrl(src){
-  if(!src)return src;
-  const sep=src.includes('?')?'&':'?';
-  return `${src}${sep}v=${encodeURIComponent(ASSET_VERSION)}`;
-}
-
 const resultLabels={sh:'Sucesso com Esperança',sm:'Sucesso com Medo',fh:'Fracasso com Esperança',fm:'Fracasso com Medo'};
 const resultFromHeading={'Sucesso com Esperança':'sh','Sucesso com Medo':'sm','Fracasso com Esperança':'fh','Fracasso com Medo':'fm'};
 const pocketNames={6:'Poções',18:'Pergaminhos',19:'Roupas'};
@@ -28,7 +18,7 @@ const challengeInfo={
 };
 const bossCharacters=['Mira','Nix','Tereza','Seraphine','Tânia','Elaris','Zuri'];
 
-$('#coverImg').src=assetUrl(window.BOOK_IMAGES.cover);
+$('#coverImg').src=window.BOOK_IMAGES.cover;
 $('#coverImg').onerror=()=>$('#coverImg').style.display='none';
 function persist(){
   localStorage.setItem('vitaumVisited',JSON.stringify([...visited]));
@@ -144,7 +134,7 @@ function makeBossPanel(){
 function render(p){
   current=p.num;visited.add(p.num);persist();cover.classList.remove('active');book.classList.add('active');
   $('#folioNum').textContent=`Folha ${String(p.num).padStart(2,'0')}`;$('#footerNum').textContent=String(p.num).padStart(2,'0');$('#eyebrow').textContent=`Folha ${String(p.num).padStart(2,'0')}`;$('#pageTitle').textContent=p.title;
-  if(p.image){imgWrap.classList.add('show');img.src=assetUrl(p.image);img.alt=`Ilustração — ${p.title}`;img.onerror=()=>imgWrap.classList.remove('show')}else{imgWrap.classList.remove('show');img.removeAttribute('src')}
+  if(p.image){imgWrap.classList.add('show');img.src=p.image;img.alt=`Ilustração — ${p.title}`;img.onerror=()=>imgWrap.classList.remove('show')}else{imgWrap.classList.remove('show');img.removeAttribute('src')}
   body.innerHTML='';
   const mech=makeMechanicToggle(p);if(mech)body.appendChild(mech);
   if([6,18,19].includes(p.num))body.appendChild(makePocketResultPanel(p.num));
