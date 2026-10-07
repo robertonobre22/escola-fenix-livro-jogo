@@ -54,24 +54,43 @@ function makeMechanicToggle(p){
   wrap.append(toggle,panel);return wrap;
 }
 function setPocketResult(pageNum,result){
-  pocketResults[pageNum]=result;completedPockets.add(pageNum);persist();render(data.find(x=>x.num===pageNum));
+  pocketResults[pageNum]=result;
+  completedPockets.add(pageNum);
+  persist();
+  render(data.find(x=>x.num===pageNum));
 }
+function bossDifficulty(){
+  let d=14;Object.values(pocketResults).forEach(r=>{if(r==='sh')d--;if(r==='fm')d++});return d;
+}
+function registeredPocketCount(){return [6,18,19].filter(n=>pocketResults[n]).length}
 function makePocketResultPanel(pageNum){
   const card=document.createElement('section');card.className='result-selector';
   const selected=pocketResults[pageNum];
   const title=document.createElement('h3');title.textContent=`Registrar resultado — ${pocketNames[pageNum]}`;card.appendChild(title);
-  const intro=document.createElement('p');intro.textContent='Depois das rolagens, escolham o resultado coletivo. Isso registra o bolso como concluído e atualiza automaticamente a Dificuldade do confronto final.';card.appendChild(intro);
+  const intro=document.createElement('p');intro.textContent='Depois das rolagens, escolham o resultado coletivo. O efeito é aplicado imediatamente e este bolso passa a contar como concluído.';card.appendChild(intro);
   const grid=document.createElement('div');grid.className='result-buttons';
   Object.entries(resultLabels).forEach(([key,label])=>{const b=document.createElement('button');b.className='result-btn'+(selected===key?' selected':'');b.textContent=label;b.onclick=()=>setPocketResult(pageNum,key);grid.appendChild(b)});
   card.appendChild(grid);
   if(selected){
-    const effects={sh:'−1 na Dificuldade do boss final.',sm:'Nenhuma alteração na Dificuldade do boss.',fh:'As personagens deste grupo recebem −1 nos testes contra o boss final.',fm:'+1 na Dificuldade do boss final para todo o grupo.'};
-    const note=document.createElement('div');note.className='result-effect';note.innerHTML=`<strong>Resultado registrado:</strong> ${resultLabels[selected]}<br><span>${effects[selected]}</span>`;card.appendChild(note);
+    const effects={sh:'−1 na Dificuldade do boss final.',sm:'Nenhuma alteração na Dificuldade do boss.',fh:'As personagens deste grupo recebem −1 nos próprios testes contra o boss final.',fm:'+1 na Dificuldade do boss final para todo o grupo.'};
+    const note=document.createElement('div');note.className='result-effect';
+    note.innerHTML=`<strong>Resultado registrado:</strong> ${resultLabels[selected]}<br><span>${effects[selected]}</span><br><strong>Dificuldade atual do boss: ${bossDifficulty()}</strong>`;
+    card.appendChild(note);
+
+    const registered=registeredPocketCount();
+    const cont=document.createElement('button');
+    cont.className='navbtn wait';
+    cont.style.marginTop='12px';
+    if(registered>=3||master){
+      cont.textContent='Os três bolsos foram resolvidos → Folha 09';
+      cont.onclick=()=>goto(9);
+    }else{
+      cont.textContent=`Resultado computado · aguardando os outros grupos (${registered}/3)`;
+      cont.onclick=()=>alert(`Este resultado já foi computado. A Folha 09 será liberada quando os três bolsos tiverem um resultado registrado. Agora: ${registered}/3.`);
+    }
+    card.appendChild(cont);
   }
   return card;
-}
-function bossDifficulty(){
-  let d=14;Object.values(pocketResults).forEach(r=>{if(r==='sh')d--;if(r==='fm')d++});return d;
 }
 function bossCounts(){
   let success=0,fail=0;
@@ -122,19 +141,19 @@ function render(p){
   if(p.num===9)body.appendChild(makeBossPanel());
   let navStack=null;let currentResultSection=null;const selectedPocketResult=pocketResults[p.num];
   p.body.forEach(item=>{
-    /* Navegação precisa ser processada antes do filtro de resultado. Assim,
-       Folhas 06, 18 e 19 continuam mostrando o botão para a Folha 09 depois
-       que um dos quatro resultados é escolhido. */
+    /* Nas páginas de resultado dos bolsos, a continuidade é criada no painel acima.
+       Assim ela continua visível mesmo quando filtramos o texto para apenas um resultado. */
+    if(item.type==='nav'&&[6,18,19].includes(p.num))return;
     if(item.type==='nav'){
       currentResultSection=null;
       if(!navStack){navStack=document.createElement('div');navStack.className='nav-stack';body.appendChild(navStack)}
       const b=document.createElement('button');b.className='navbtn';b.textContent=item.label;
       if(item.target===9){
         b.classList.add('wait');
-        const registered=Object.keys(pocketResults).filter(k=>[6,18,19].includes(Number(k))).length;
+        const registered=registeredPocketCount();
         if(registered<3&&!master)b.textContent=`Resultado registrado · aguardando os outros grupos (${registered}/3)`;
         else b.textContent='Os três bolsos foram resolvidos → Folha 09';
-        b.onclick=()=>{if(master||Object.keys(pocketResults).filter(k=>[6,18,19].includes(Number(k))).length>=3)goto(9);else alert('Este resultado foi registrado. A Folha 09 será liberada quando os três bolsos tiverem um resultado registrado.')};
+        b.onclick=()=>{if(master||registeredPocketCount()>=3)goto(9);else alert('A Folha 09 será liberada quando os três bolsos tiverem um resultado registrado.')};
       }
       else if(p.num===9&&item.target===14){b.onclick=()=>{const c=bossCounts();if(master||c.success>=4)goto(14);else alert('A vitória é liberada quando o grupo acumular 4 sucessos.')}}
       else if(p.num===9&&item.target===5){b.onclick=()=>{const c=bossCounts();if(master||c.fail>=4)goto(5);else alert('A derrota é liberada quando o grupo acumular 4 fracassos.')}}
