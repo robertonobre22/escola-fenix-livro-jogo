@@ -10,6 +10,20 @@ $('#coverImg').src=window.BOOK_IMAGES.cover;
 $('#coverImg').onerror=()=>$('#coverImg').style.display='none';
 function persist(){localStorage.setItem('vitaumVisited',JSON.stringify([...visited]));localStorage.setItem('vitaumPockets',JSON.stringify([...completedPockets]));}
 function esc(s){const d=document.createElement('div'); d.textContent=s; return d.innerHTML}
+function updateStatus(){
+  $('#visitedText').textContent=`${visited.size}/20 visitadas`;
+  $('#progressFill').style.width=`${visited.size/20*100}%`;
+}
+function resetReading(){
+  const ok=confirm('Reiniciar esta leitura? Isso apaga as páginas visitadas e os bolsos marcados como concluídos neste navegador.');
+  if(!ok)return;
+  visited.clear();
+  completedPockets.clear();
+  localStorage.removeItem('vitaumVisited');
+  localStorage.removeItem('vitaumPockets');
+  updateStatus();
+  showCover();
+}
 function goto(n, animate=true){
   const target=data.find(x=>x.num===n); if(!target)return;
   if(animate && current!==null){page.classList.add('turning');setTimeout(()=>{render(target);page.classList.remove('turning')},220)} else render(target);
@@ -37,13 +51,13 @@ function render(p){
     const mark=document.createElement('button'); mark.className='navbtn'; mark.style.marginTop='14px'; mark.textContent=completedPockets.has(p.num)?'✓ Este bolso já foi concluído':'Marcar este bolso como concluído';
     mark.onclick=()=>{completedPockets.add(p.num);persist();render(p)};body.appendChild(mark);
   }
-  $('#statusText').textContent=`Folha ${String(p.num).padStart(2,'0')} · ${p.title}`; $('#visitedText').textContent=`${visited.size}/20 visitadas`; $('#progressFill').style.width=`${visited.size/20*100}%`;
+  $('#statusText').textContent=`Folha ${String(p.num).padStart(2,'0')} · ${p.title}`; updateStatus();
   document.title=`Folha ${String(p.num).padStart(2,'0')} — ${p.title}`; page.querySelector('.paper').scrollTop=0;
 }
-function showCover(){current=null;book.classList.remove('active');cover.classList.add('active');$('#statusText').textContent='Capa';document.title='A Bolsa, o Vômito e o Ano Letivo — Livro-jogo'}
+function showCover(){current=null;book.classList.remove('active');cover.classList.add('active');$('#statusText').textContent='Capa';updateStatus();document.title='A Bolsa, o Vômito e o Ano Letivo — Livro-jogo'}
 function buildToc(){const list=$('#tocList');data.forEach(p=>{const b=document.createElement('button');b.className='toc-item';b.innerHTML=`<strong>Folha ${String(p.num).padStart(2,'0')}</strong><small>${esc(p.title)}</small>`;b.onclick=()=>{goto(p.num,false);closeToc()};list.appendChild(b)})}
 function openToc(){$('#toc').classList.add('open');$('#toc').setAttribute('aria-hidden','false')} function closeToc(){$('#toc').classList.remove('open');$('#toc').setAttribute('aria-hidden','true')}
-$('#startBtn').onclick=()=>goto(1,false);$('#homeBtn').onclick=showCover;$('#tocBtn').onclick=openToc;$('#tocClose').onclick=closeToc;
+$('#startBtn').onclick=()=>goto(1,false);$('#homeBtn').onclick=showCover;$('#tocBtn').onclick=openToc;$('#tocClose').onclick=closeToc;$('#resetBtn').onclick=resetReading;
 $('#masterBtn').onclick=()=>{master=!master;app.classList.toggle('master',master);$('#masterBtn').textContent=master?'Modo mestre':'Modo jogadoras'; if(current)render(data.find(x=>x.num===current))};
 $('#fsBtn').onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
 buildToc(); showCover();
