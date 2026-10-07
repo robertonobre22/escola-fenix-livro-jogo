@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>A Bolsa, o Vômito e o Ano Letivo — Livro-jogo</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app" class="app">
+  <header class="topbar">
+    <button id="homeBtn" class="iconbtn" aria-label="Capa">⌂</button>
+    <div class="brand"><span class="brand-kicker">Escola da Fênix</span><strong>A Bolsa, o Vômito e o Ano Letivo</strong></div>
+    <div class="top-actions">
+      <button id="tocBtn" class="iconbtn" aria-label="Índice">☰</button>
+      <button id="masterBtn" class="modebtn" title="Alterna informações exclusivas do mestre">Modo jogadoras</button>
+      <button id="fsBtn" class="iconbtn" aria-label="Tela cheia">⛶</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <aside id="toc" class="toc" aria-hidden="true">
+      <div class="toc-head"><strong>Folhas</strong><button id="tocClose" class="iconbtn">×</button></div>
+      <div id="tocList" class="toc-list"></div>
+    </aside>
+
+    <section id="cover" class="cover active">
+      <img id="coverImg" alt="Capa do livro-jogo">
+      <div class="cover-shade"></div>
+      <div class="cover-copy">
+        <p>Uma aventura das amigas mágicas</p>
+        <h1>A Bolsa, o Vômito<br>e o Ano Letivo</h1>
+        <p class="sub">Livro-jogo interativo · Escola da Fênix</p>
+        <button id="startBtn" class="primary">Abrir o livro</button>
+      </div>
+    </section>
+
+    <section id="book" class="book" aria-live="polite">
+      <article id="page" class="page">
+        <div class="paper">
+          <div class="folio"><span id="folioNum"></span><span>Escola da Fênix</span></div>
+          <div id="pageImageWrap" class="page-image-wrap"><img id="pageImage" alt=""></div>
+          <div class="page-content">
+            <div class="eyebrow" id="eyebrow"></div>
+            <h2 id="pageTitle"></h2>
+            <div id="pageBody" class="page-body"></div>
+          </div>
+          <div class="page-footer"><span>Vitaum · livro-jogo</span><span id="footerNum"></span></div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span id="statusText">Capa</span>
+    <div class="progress"><div id="progressFill"></div></div>
+    <span id="visitedText"></span>
+  </footer>
+</div>
+<script src="book-data-1.js"></script>
+<script src="book-data-2.js"></script>
+<script src="book-data-3.js"></script>
+<script src="book-data-4.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
